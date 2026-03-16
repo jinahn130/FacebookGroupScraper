@@ -2,6 +2,8 @@
 
 A local web scraper for extracting posts from Facebook Groups using intercepted GraphQL API calls. Includes a browser-based dashboard (FastAPI + HTML) to manage scraping sessions, configure groups, and export results.
 
+![alt text](image.png)
+
 ---
 
 ## What It Does
