@@ -1,0 +1,47 @@
+# Environment & secrets
+.env
+cookies/fb_session.json
+
+# Source code (private)
+fb_auth.py
+fb_client.py
+fb_config.py
+fb_extractor.py
+fb_parser.py
+fb_scraper.py
+fb_session.py
+server.py
+main.py
+test.py
+# requirements.txt is intentionally NOT ignored (kept public)
+config.py
+fingerprint.py
+fingerprint_inject.js
+http_worker.py
+playwright_worker.py
+proxy_manager.py
+session_manager.py
+
+# Raw GraphQL data
+"graphQL response sharedpost.txt"
+graphQL response sharedpost.txt
+scrapped data.json
+
+# Groups config (has your group IDs)
+groups.json
+
+# Guide / internal docs
+guide/
+
+# Claude internal
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store

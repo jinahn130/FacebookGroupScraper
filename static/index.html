@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FB Group Scraper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f1117; color: #e2e8f0;
+    min-height: 100vh; display: flex; align-items: flex-start;
+    justify-content: center; padding: 32px 16px;
+  }
+  .card {
+    background: #1a1d27; border: 1px solid #2d3148;
+    border-radius: 16px; padding: 32px 40px; width: 580px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  h1 { font-size: 17px; font-weight: 600; color: #a5b4fc; margin-bottom: 22px; }
+  .section-label {
+    font-size: 10px; color: #64748b; text-transform: uppercase;
+    letter-spacing: 0.6px; margin-bottom: 8px;
+  }
+  .divider { border: none; border-top: 1px solid #2d3148; margin: 18px 0; }
+
+  /* Stats */
+  .stats { display: flex; gap: 10px; margin-bottom: 18px; }
+  .stat {
+    flex: 1; background: #0f1117; border: 1px solid #2d3148;
+    border-radius: 10px; padding: 10px 12px; text-align: center;
+  }
+  .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: #a5b4fc; margin-top: 2px; }
+  .stat-status { flex: 2; text-align: left; }
+
+  /* Pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 99px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .pill-idle           { background:#1e293b; color:#64748b; } .pill-idle .dot      { background:#64748b; }
+  .pill-launching      { background:#1a2a3a; color:#60a5fa; } .pill-launching .dot { background:#60a5fa; animation:pulse 1s infinite; }
+  .pill-ready          { background:#1a2a1a; color:#86efac; } .pill-ready .dot     { background:#86efac; }
+  .pill-login          { background:#2a1a3a; color:#c084fc; } .pill-login .dot     { background:#c084fc; animation:pulse 1s infinite; }
+  .pill-tokens         { background:#2a2a1a; color:#fbbf24; } .pill-tokens .dot    { background:#fbbf24; animation:pulse 1s infinite; }
+  .pill-running        { background:#1a2e1a; color:#4ade80; } .pill-running .dot   { background:#4ade80; animation:pulse 1s infinite; }
+  .pill-done           { background:#1a2e2e; color:#34d399; } .pill-done .dot      { background:#34d399; }
+  .pill-stopped        { background:#2e1a1a; color:#f87171; } .pill-stopped .dot   { background:#f87171; }
+  .pill-error          { background:#2e1a1a; color:#f87171; } .pill-error .dot     { background:#f87171; }
+  .pill-queued         { background:#1e293b; color:#64748b; } .pill-queued .dot    { background:#64748b; }
+  .pill-scraping       { background:#1a2e1a; color:#4ade80; } .pill-scraping .dot  { background:#4ade80; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .error-box {
+    margin-bottom: 14px; padding: 9px 12px;
+    background: #2e1a1a; border: 1px solid #7f1d1d;
+    border-radius: 8px; font-size: 11px; color: #fca5a5;
+    word-break: break-word; display: none;
+  }
+
+  /* Buttons */
+  button {
+    padding: 10px 14px; border: none; border-radius: 9px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+  .btn-launch { background: #3b82f6; color: #fff; width: 100%; }
+  .btn-start  { background: #4ade80; color: #0a0f0a; flex: 1; }
+  .btn-stop   { background: #f87171; color: #1a0505; flex: 1; }
+  .btn-csv    { background: #2d3148; color: #a5b4fc; flex: 1; }
+  .btn-json   { background: #2d3148; color: #a5b4fc; flex: 1; }
+  .btn-add    { background: #6366f1; color: #fff; padding: 9px 16px; white-space: nowrap; }
+  .btn-remove { background: transparent; border: 1px solid #3f3f5a; color: #f87171; padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+  .btn-row    { display: flex; gap: 8px; }
+
+  /* Group add row */
+  .add-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
+  .add-row .fields { flex: 1; display: flex; gap: 8px; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; }
+  .field input {
+    background: #0f1117; border: 1px solid #2d3148;
+    border-radius: 8px; color: #e2e8f0;
+    padding: 8px 10px; font-size: 13px; outline: none;
+  }
+  .field input:focus { border-color: #6366f1; }
+  .field.grow { flex: 1; }
+
+  /* Group list */
+  .group-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; min-height: 32px; }
+  .group-row {
+    display: flex; align-items: center; gap: 10px;
+    background: #0f1117; border: 1px solid #2d3148;
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .group-info { flex: 1; min-width: 0; }
+  .group-id   { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+  .group-url  { font-size: 10px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; text-decoration: none; }
+  .group-url:hover { color: #a5b4fc; text-decoration: underline; }
+  .group-meta { font-size: 10px; color: #64748b; white-space: nowrap; }
+  .group-posts{ font-size: 12px; font-weight: 700; color: #a5b4fc; min-width: 40px; text-align: right; }
+  .empty-hint { font-size: 12px; color: #475569; text-align: center; padding: 12px; }
+
+  /* Per-group export */
+  .group-export { font-size: 10px; color: #6366f1; cursor: pointer; text-decoration: underline; white-space: nowrap; }
+  .group-export:hover { color: #a5b4fc; }
+
+  /* Mode toggle buttons */
+  .mode-btn {
+    flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    border: 1px solid #2d3148; background: #0f1117; color: #64748b; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-btn.mode-active { background: #2d3148; color: #a5b4fc; border-color: #6366f1; }
+
+  /* Inline max posts input in group row */
+  .group-max-input {
+    width: 60px; background: #1a1d27; border: 1px solid #2d3148;
+    border-radius: 6px; color: #e2e8f0; padding: 4px 6px;
+    font-size: 12px; text-align: center; outline: none;
+    -moz-appearance: textfield;
+  }
+  .group-max-input::-webkit-outer-spin-button,
+  .group-max-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .group-max-input:focus { border-color: #6366f1; }
+  .group-max-input:disabled { opacity: 0.4; }
+
+  /* Log */
+  .log {
+    margin-top: 14px; background: #0f1117; border: 1px solid #2d3148;
+    border-radius: 8px; padding: 10px 12px;
+    font-size: 11px; color: #64748b;
+    font-family: "SF Mono","Fira Code",monospace;
+    height: 80px; overflow-y: auto;
+  }
+  .log-line { margin-bottom: 2px; }
+  .log-line.ok   { color: #4ade80; }
+  .log-line.err  { color: #f87171; }
+  .log-line.info { color: #60a5fa; }
+  .log-line.warn { color: #fbbf24; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>FB Group Scraper</h1>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Posts</div>
+      <div class="stat-value" id="post-count">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Page</div>
+      <div class="stat-value" id="page-num">—</div>
+    </div>
+    <div class="stat stat-status" style="flex:2;text-align:left;padding:10px 12px;">
+      <div class="stat-label" style="margin-bottom:6px;">Status</div>
+      <span class="pill pill-idle" id="status-pill">
+        <span class="dot"></span><span id="status-text">Idle</span>
+      </span>
+    </div>
+  </div>
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Step 1: Launch -->
+  <div class="section-label">Step 1 — Browser</div>
+  <button class="btn-launch" id="btn-launch" onclick="doLaunch()">⬡ Launch Browser</button>
+
+  <hr class="divider"/>
+
+  <!-- Step 2: Groups -->
+  <div class="section-label">Step 2 — Group Queue</div>
+  <div class="add-row">
+    <div class="fields">
+      <div class="field grow">
+        <label>Facebook Group URL</label>
+        <input type="text" id="input-url" placeholder="https://www.facebook.com/groups/..."/>
+      </div>
+    </div>
+    <button class="btn-add" onclick="addGroup()">+ Add</button>
+  </div>
+
+  <div class="group-list" id="group-list">
+    <div class="empty-hint" id="empty-hint">No groups added yet</div>
+  </div>
+
+  <!-- Mode toggle -->
+  <div style="display:flex;gap:6px;margin-top:10px;margin-bottom:8px;">
+    <button id="mode-per-group" class="mode-btn mode-active" onclick="setMode('per-group')">Per-group max</button>
+    <button id="mode-global"    class="mode-btn"              onclick="setMode('global')">Global max (equal)</button>
+  </div>
+
+  <!-- Per-group mode hint -->
+  <div id="hint-per-group" style="font-size:11px;color:#475569;margin-bottom:10px;">
+    Each group uses its own max posts set in the list above.
+  </div>
+
+  <!-- Global mode input -->
+  <div id="hint-global" style="display:none;margin-bottom:10px;">
+    <div class="field" style="width:160px;">
+      <label>Posts per group (equal)</label>
+      <input type="text" id="global-max" value="10" inputmode="numeric" pattern="[0-9]*"
+             style="background:#0f1117;border:1px solid #2d3148;border-radius:8px;color:#e2e8f0;padding:8px 10px;font-size:13px;outline:none;width:100%;"/>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- Step 3: Run -->
+  <div class="section-label">Step 3 — Run</div>
+
+  <div class="btn-row" style="margin-bottom:10px;">
+    <button class="btn-start" id="btn-start" onclick="doStart()" disabled>▶ Start All</button>
+    <button class="btn-stop"  id="btn-stop"  onclick="doStop()"  disabled>■ Stop</button>
+  </div>
+
+  <!-- Export -->
+  <div class="section-label">Export (all collected posts)</div>
+  <div class="btn-row">
+    <button class="btn-csv"  onclick="exportCSV()">↓ CSV</button>
+    <button class="btn-json" onclick="exportJSON()">↓ Save JSON</button>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+  const PILLS = {
+    idle:                ["pill-idle",     "Idle"],
+    launching:           ["pill-launching","Launching…"],
+    ready:               ["pill-ready",    "Browser Ready"],
+    "waiting for login": ["pill-login",    "Waiting for login…"],
+    "capturing tokens":  ["pill-tokens",   "Capturing tokens…"],
+    running:             ["pill-running",  "Running"],
+    done:                ["pill-done",     "Done"],
+    stopped:             ["pill-stopped",  "Stopped"],
+    error:               ["pill-error",    "Error"],
+  };
+  const GROUP_PILL = {
+    queued:   ["pill-queued",   "Queued"],
+    scraping: ["pill-scraping", "Scraping"],
+    done:     ["pill-done",     "Done"],
+    stopped:  ["pill-stopped",  "Stopped"],
+  };
+
+  let pollInterval = null;
+  let lastStatus   = "";
+  let localGroups  = [];
+  let currentMode  = "per-group"; // "per-group" | "global"
+
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById("mode-per-group").className = "mode-btn" + (mode === "per-group" ? " mode-active" : "");
+    document.getElementById("mode-global").className    = "mode-btn" + (mode === "global"    ? " mode-active" : "");
+    document.getElementById("hint-per-group").style.display = mode === "per-group" ? "block" : "none";
+    document.getElementById("hint-global").style.display    = mode === "global"    ? "block" : "none";
+    // Re-render groups to enable/disable inline inputs
+    renderGroups(localGroups);
+  }
+
+  function log(msg, type = "info") {
+    const el   = document.getElementById("log");
+    const line = document.createElement("div");
+    line.className = `log-line ${type}`;
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setPill(s) {
+    const pill = document.getElementById("status-pill");
+    const text = document.getElementById("status-text");
+    const [cls, label] = PILLS[s] || ["pill-idle", s];
+    pill.className = `pill ${cls}`;
+    text.textContent = label;
+  }
+
+  function updateButtons(d) {
+    const busy     = ["capturing tokens","running"].includes(d.status);
+    const canStart = d.browser_open && !busy && localGroups.length > 0;
+    document.getElementById("btn-launch").disabled = d.browser_open || d.status === "launching";
+    document.getElementById("btn-start").disabled  = !canStart;
+    document.getElementById("btn-stop").disabled   = !busy;
+  }
+
+  function renderGroups(groups) {
+    localGroups = groups;
+    const list = document.getElementById("group-list");
+    const hint = document.getElementById("empty-hint");
+
+    // Remove old rows
+    list.querySelectorAll(".group-row").forEach(el => el.remove());
+
+    if (!groups || groups.length === 0) {
+      hint.style.display = "block";
+      return;
+    }
+    hint.style.display = "none";
+
+    groups.forEach((g, i) => {
+      const [pillCls, pillLabel] = GROUP_PILL[g.status] || ["pill-queued", g.status];
+      const row = document.createElement("div");
+      row.className = "group-row";
+      const displayName = g.name || g.group_id;
+      const meta = [g.visibility || null, g.members ? g.members.toLocaleString() + ' members' : null].filter(Boolean).join(' · ');
+      const inGlobalMode = currentMode === 'global';
+      row.innerHTML = `
+        <div class="group-info">
+          <div class="group-id">${displayName}</div>
+          <a class="group-url" href="${g.url}" target="_blank" rel="noopener">${g.url}</a>
+          ${meta ? `<div style="font-size:10px;color:#475569;">${meta}</div>` : ''}
+        </div>
+        <div class="group-posts">${g.post_count > 0 ? g.post_count + ' posts' : ''}</div>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" class="group-max-input" value="${g.max_posts}"
+               title="Max posts for this group"
+               ${inGlobalMode ? 'disabled' : ''}
+               onchange="updateGroupMax(${i}, this.value)"
+               ${g.status === 'scraping' ? 'disabled' : ''}/>
+        <span class="pill ${pillCls}" style="font-size:10px;padding:2px 8px;">
+          <span class="dot"></span>${pillLabel}
+        </span>
+        <span class="group-export" onclick="exportCSV('${g.group_id}')">CSV</span>
+        <button class="btn-remove" onclick="removeGroup(${i})" ${g.status === 'scraping' ? 'disabled' : ''}>✕</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch("/status");
+      const d = await r.json();
+
+      document.getElementById("post-count").textContent = d.post_count;
+      document.getElementById("page-num").textContent   = d.page || "—";
+
+      const errBox = document.getElementById("error-box");
+      if (d.last_error) { errBox.style.display = "block"; errBox.textContent = d.last_error; }
+      else               { errBox.style.display = "none"; }
+
+      updateButtons(d);
+      renderGroups(d.groups || []);
+
+      if (d.status !== lastStatus) {
+        setPill(d.status);
+        const msgs = {
+          "launching":           ["Launching browser…",                                    "info"],
+          "ready":               ["Browser ready — add groups and click Start All",        "ok"],
+          "waiting for login":   ["Not logged in — log in in the browser window",          "warn"],
+          "capturing tokens":    [`Capturing tokens for ${d.current_group || 'group'}…`,   "info"],
+          "running":             [`Scraping ${d.current_group || ''}…`,                    "ok"],
+          "done":                [`Done — ${d.post_count} posts total`,                    "ok"],
+          "stopped":             ["Stopped",                                               "info"],
+          "error":               [`Error: ${d.last_error}`,                                "err"],
+        };
+        if (msgs[d.status]) log(...msgs[d.status]);
+        lastStatus = d.status;
+      }
+
+      const busy = ["launching","capturing tokens","running"].includes(d.status);
+      if (!busy && d.status !== "idle" && d.status !== "ready") {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    } catch(e) { /* server not ready */ }
+  }
+
+  function startPolling() {
+    if (!pollInterval) pollInterval = setInterval(poll, 2000);
+  }
+
+  async function doLaunch() {
+    document.getElementById("btn-launch").disabled = true;
+    const r = await fetch("/launch", { method: "POST" });
+    const d = await r.json();
+    if (d.error) { log(d.error, "err"); document.getElementById("btn-launch").disabled = false; return; }
+    lastStatus = "";
+    startPolling();
+  }
+
+  async function addGroup() {
+    const url = document.getElementById("input-url").value.trim();
+    if (!url) { log("Enter a group URL first", "err"); return; }
+    const r = await fetch(`/groups/add?url=${encodeURIComponent(url)}`, { method: "POST" });
+    const d = await r.json();
+    if (d.error) { log(d.error, "err"); return; }
+    document.getElementById("input-url").value = "";
+    log(`Added group: ${d.added}`, "ok");
+    const sr = await fetch("/status");
+    const sd = await sr.json();
+    renderGroups(sd.groups || []);
+    updateButtons(sd);
+  }
+
+  async function removeGroup(index) {
+    const r = await fetch(`/groups/${index}`, { method: "DELETE" });
+    const d = await r.json();
+    if (d.error) { log(d.error, "err"); return; }
+    log(`Removed group: ${d.removed}`, "info");
+    const sr = await fetch("/status");
+    const sd = await sr.json();
+    renderGroups(sd.groups || []);
+    updateButtons(sd);
+  }
+
+  async function updateGroupMax(index, value) {
+    await fetch(`/groups/${index}/max_posts?max_posts=${value}`, { method: "PATCH" });
+  }
+
+  async function doStart() {
+    let url = "/start";
+    let note = "";
+    if (currentMode === "global") {
+      const globalMax = document.getElementById("global-max").value.trim();
+      if (globalMax) { url += `?global_max_posts=${globalMax}`; note = ` (${globalMax} posts each)`; }
+    }
+    const r = await fetch(url, { method: "POST" });
+    const d = await r.json();
+    if (d.error) { log(d.error, "err"); return; }
+    log(`Starting ${d.groups} group(s)${note}…`, "info");
+    lastStatus = "";
+    startPolling();
+  }
+
+  async function doStop() {
+    await fetch("/stop", { method: "POST" });
+    log("Stop signal sent", "info");
+  }
+
+  async function exportCSV(groupId = null) {
+    const url = groupId ? `/export/csv?group_id=${groupId}` : "/export/csv";
+    const r   = await fetch(url);
+    if (!r.ok) { const d = await r.json(); log(d.error, "err"); return; }
+    const blob = await r.blob();
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(blob),
+      download: groupId ? `posts_${groupId}.csv` : "posts.csv"
+    });
+    a.click();
+    log(`CSV downloaded${groupId ? ' for ' + groupId : ''}`, "ok");
+  }
+
+  async function exportJSON() {
+    const r = await fetch("/export/json");
+    const d = await r.json();
+    if (d.error) { log(d.error, "err"); return; }
+    log(`Saved → ${d.saved_to} (${d.post_count} posts)`, "ok");
+  }
+
+  // Allow pressing Enter in URL field to add
+  document.getElementById("input-url").addEventListener("keydown", e => {
+    if (e.key === "Enter") addGroup();
+  });
+
+  poll();
+</script>
+</body>
+</html>
